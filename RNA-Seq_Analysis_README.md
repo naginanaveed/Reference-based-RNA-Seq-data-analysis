@@ -310,6 +310,10 @@ Splice junctions: 156,234 novel
 
 ---
 
+<img width="1000" height="500" alt="mapping result igv" src="https://github.com/user-attachments/assets/eb1f2c15-f35f-4084-ba91-c354b1b18c82" />
+
+
+---
 ### 4. Post-Mapping Quality Checks
 
 #### **Step 4a: MarkDuplicates - Identify PCR Duplicates**
