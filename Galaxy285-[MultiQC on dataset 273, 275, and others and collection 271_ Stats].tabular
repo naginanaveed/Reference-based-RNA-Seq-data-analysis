@@ -1,0 +1,5 @@
+Sample	fastqc-percent_duplicates	fastqc-percent_gc	fastqc-avg_sequence_length	fastqc-median_sequence_length	fastqc-percent_fails	fastqc-total_sequences
+GSM461177_forward	45.2181	54.0	37.0	37	9.090909090909092	10.575821
+GSM461177_reverse	32.378600000000006	55.0	37.0	37	18.181818181818183	10.575821
+GSM461180_forward	46.0678	56.0	37.0	37	18.181818181818183	12.26347
+GSM461180_reverse	0.15579999999999927	56.0	37.0	37	18.181818181818183	12.26347
