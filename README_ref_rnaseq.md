@@ -462,6 +462,7 @@ Combines all post-mapping QC results into one interactive report for easy visual
  
 ---
 
+<img width="800" height="500" alt="mapping result igv" src="https://github.com/user-attachments/assets/89d1740c-2aec-41f9-ae8e-1d60e8d009ed" />
 
 ### Phase 6: Read Counting — featureCounts
 
@@ -493,14 +494,26 @@ FBgn0000014     3200    1200       1567       234        567
 
 ### Phase 7: Differential Expression — DESeq2
 
-**Goal:** Using the count tables from all 7 samples, statistically identify genes that are significantly more or less expressed in the treated (PS-depleted) condition compared to untreated.
 
-| Field | Value |
-|-------|-------|
-| **Tool** | `DESeq2` |
-| **Input** | 7 count tables (one per sample) · Factor definitions (treatment status, sequencing type) |
-| **Output** | Normalized count table · Summary results table (log2 fold change, p-values) · QC plots (PCA, sample distance heatmap, MA plot) |
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | DESeq2 | Robust, widely-used R package; accounts for sequencing depth and variance |
+| **Count Input** | featureCounts output | Raw counts (not normalized) |
+| **Experimental Design** | 2-factor: Sample + Condition | Treated vs. Untreated |
+| **Statistical Model** | Negative Binomial | Appropriate for count data |
+| **Primary Factor** | Treatment (Treated/Untreated) | Effect of interest |
+| **Normalization** | Media of Ratios (default) | Corrects for sequencing depth bias |
+| **Dispersion Estimation** | Automatic | Galaxy estimates from data |
+| **False Discovery Rate** | <0.05 (adjusted p-value) | Stringent multiple testing correction |
+| **Log2 Fold Change** | ±2.0 (optional threshold) | Biologically meaningful cutoff |
 
+**Why DESeq2?**
+
+1. **Accounts for Variation:** Models the variance inherent in RNA-Seq counts
+2. **Handles Replicates Well:** Uses all replicates to estimate gene-wise dispersion
+3. **Robust:** Widely validated and cited (>50,000 citations)
+4. **Multiple Corrections:** Properly adjusts p-values for multiple comparisons
+5. **Normalization:** Factors out technical bias from sequencing depth differences
 
 #### How DESeq2 Works
 
@@ -520,35 +533,62 @@ The DESeq2 design `~ sequencing_type + treatment` tells the model to account for
 **Step 4 — Statistical testing (Wald test):**
 For each gene, DESeq2 fits a generalized linear model and performs a Wald test for the treatment factor. This produces a p-value for the null hypothesis "this gene is not differentially expressed". P-values are adjusted for multiple testing using the Benjamini-Hochberg method (FDR control) to produce **adjusted p-values (padj)**.
 
-#### Interpreting DESeq2 Results Table
 
-| Column | Description |
-|--------|-------------|
-| `Gene ID` | Drosophila gene identifier (e.g., FBgn0000014) |
-| `baseMean` | Average normalized count across all samples — indicates how much the gene is expressed overall |
-| `log2FoldChange` | How many times more (positive) or less (negative) the gene is expressed in treated vs. untreated, on log2 scale. log2FC = 1 means 2× higher; log2FC = −2 means 4× lower |
-| `lfcSE` | Standard error of the fold change estimate — smaller is more precise |
-| `stat` | Wald statistic (log2FC / lfcSE) |
-| `pvalue` | Raw p-value from the Wald test |
-| `padj` | Benjamini-Hochberg adjusted p-value (FDR-corrected) |
+**Input:**
+- Count matrix (from featureCounts)
+- Experimental design: Sample IDs + Condition (Treated/Untreated)
+- Metadata: Which samples are biological replicates
 
-**Standard cutoffs for calling a gene differentially expressed:**
-- `padj < 0.05` — statistically significant (at most 5% false discovery rate)
-- `|log2FoldChange| > 1` — at least 2-fold change in expression (biologically meaningful)
+**Output:**
 
-#### DESeq2 QC Plots
+1. **Statistical Results Table:**
+   - Gene ID
+   - Base Mean (average expression)
+   - Log2 Fold Change (effect size)
+   - Standard Error
+   - Wald Test Statistic
+   - P-value (raw)
+   - Adjusted p-value (Benjamini-Hochberg)
 
-| Plot | What It Shows | What Good Looks Like |
-|------|--------------|---------------------|
-| **PCA plot** | Samples projected onto 2 principal components based on normalized expression | PC1 should separate treated from untreated; PC2 separates PE from SE. No outlier samples. |
-| **Sample distance heatmap** | Hierarchical clustering of sample-to-sample expression similarity | Treated samples cluster together; untreated samples cluster together |
-| **MA plot** | log2FC on y-axis vs. mean expression (baseMean) on x-axis for every gene | Most genes cluster around log2FC = 0 (unchanged); significant genes shown in red |
-| **Dispersion plot** | Gene-wise dispersion vs. mean expression | Shows DESeq2's shrinkage of dispersions toward the fitted trend |
+2. **Visualizations:**
+   - MA-plot (M = log2FC, A = mean log expression)
+   - Volcano plot (log2FC vs. -log10 p-value)
+   - Heatmap of top DE genes
+   - PCA plot (sample relationships)
 
-> 💡 **Alternative tools:** edgeR and limma-voom are valid alternatives to DESeq2 and often give similar results. limma-voom performs well with more replicates.
+**Interpretation of Results:**
+
+| Gene | log2FC | padj | Interpretation |
+|------|--------|------|----------------|
+| Gene A | +3.5 | 0.001 | **Significantly UP-regulated** (8.9x higher in treated) |
+| Gene B | -2.1 | 0.01 | **Significantly DOWN-regulated** (4.3x lower in treated) |
+| Gene C | +0.5 | 0.5 | Not significant (noisy, inconsistent) |
+| Gene D | +5.0 | 0.2 | Large effect but p > 0.05 (few replicates?) |
+
+**Statistical Significance Criteria:**
+
+For a gene to be called **differentially expressed (DE):**
+- Adjusted p-value < 0.05 (account for multiple testing)
+- AND log2 Fold Change > 2 or < -0.5 (optional, depends on biological context)
+
+**Example Results Summary:**
+```
+Total genes tested: 13,602
+Genes up-regulated: 1,234 (padj < 0.05)
+Genes down-regulated: 987 (padj < 0.05)
+Total DE genes: 2,221 (16.3%)
+```
+
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/4ce2b861-d523-4ae1-b1dd-0795cf8cb7c9" />
+
+
 
 ---
 
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/ad9dc2d7-ded5-48a7-9af1-a7d4f33fd900" />
+
+
+---
 ### Phase 8: Visualization — Heatmap2 & Volcano Plot
 
 **Goal:** Produce publication-quality visualizations of the differentially expressed genes to understand patterns and communicate results.
@@ -559,7 +599,7 @@ For each gene, DESeq2 fits a generalized linear model and performs a Wald test f
 |-------|-------|
 | **Tool** | `Volcano Plot` |
 | **Input** | DESeq2 results table |
-| **Output** | Scatter plot of −log10(padj) on y-axis vs. log2FoldChange on x-axis |
+| **Output** | Scatter plot of −log10(padj) on y-axis vs. logFoldChange on x-axis |
 
 **How to read a Volcano plot:**
 - **X-axis:** Effect size — how strongly the gene changes. Positive = upregulated in treated; negative = downregulated.
@@ -568,7 +608,10 @@ For each gene, DESeq2 fits a generalized linear model and performs a Wald test f
 - **Top-right:** Strongly upregulated, highly significant genes
 - **Bottom centre:** Unchanged genes (most genes)
 
-A well-conducted experiment shows a clear symmetric spread with a meaningful number of significant genes in the top corners.
+
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/4b0c3d21-7155-4c96-a0e0-6efceff6ddec" />
+
+---
 
 #### Step 8.2 — Heatmap2
 
@@ -585,7 +628,10 @@ Rows are genes, columns are samples. Color intensity shows normalized expression
 - Downregulated genes show the opposite pattern
 
 ---
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/71c3e622-d2fe-4ec0-8e73-2154008a0f53" />
 
+
+---
 ### Phase 9: Functional Enrichment — goseq
 
 **Goal:** Go beyond individual genes and ask: are there biological pathways, processes, or functions that are systematically enriched among the DE genes? This converts a gene list into biological insight.
@@ -602,11 +648,13 @@ The Gene Ontology is a standardized vocabulary that describes biological attribu
 - **Molecular Function (MF):** What the gene product does at the molecular level (e.g., "RNA binding", "kinase activity")
 - **Cellular Component (CC):** Where the gene product is located in the cell (e.g., "nucleus", "mitochondria")
 
-**What goseq does and why it's needed:**
-A naive approach would be to test whether each GO term's genes are over-represented among your DE gene list using a Fisher's test. However, in RNA-seq data, **longer genes tend to get more reads** and are therefore more likely to be detected as differentially expressed — not because they are biologically more important. goseq corrects for this **gene-length bias** before performing enrichment testing, making the results much more reliable than simple Fisher's tests.
 
 **Interpreting results:**
 Each row is a GO term. A small adjusted p-value means the genes annotated with that term appear more often in your DE list than expected by chance. For a Pasilla knockdown (a splicing regulator), you would expect to see enrichment of terms like **"mRNA splicing"**, **"RNA processing"**, and **"alternative splicing"** — which confirms the biological validity of the analysis.
+
+---
+
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/65f2bd9d-963e-4921-9cdb-df8b0a3ce02a" />
 
 ---
 
