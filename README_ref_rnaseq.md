@@ -658,44 +658,22 @@ Each row is a GO term. A small adjusted p-value means the genes annotated with t
 
 ---
 
-## Tool Summary Table
+## Tool Summary 
 
-| Phase | Tool | Galaxy Version | Input | Output | Purpose |
-|-------|------|---------------|-------|--------|---------|
-| QC | Falco | Current | Raw FASTQ | Per-sample HTML QC report | Assess raw read quality |
-| QC Aggregation | MultiQC | 1.27+galaxy4 | Falco reports | Combined HTML report | Compare all samples in one view |
-| Trimming | Cutadapt | Current | Raw FASTQ | Trimmed FASTQ | Remove adapters and low-quality bases |
-| Alignment | RNA STAR | 2.7.11b+galaxy0 | Trimmed FASTQ + GTF + dm6 | BAM + log + junctions | Splice-aware genome alignment |
-| Alignment QC | IGV | External | BAM | Visual alignment browser | Visual check of mapping quality |
-| Duplicate Marking | MarkDuplicates (Picard) | Current | BAM | Flagged BAM + metrics | Identify PCR duplicates |
-| Read Distribution | RSeQC | Current | BAM + BED12 | Distribution report | Confirm reads map to exons |
-| Read Counting | featureCounts | Current | BAM + GTF | Count matrix | Count reads per gene |
-| Differential Expression | DESeq2 | Current | Count tables | Results table + QC plots | Statistical DE analysis |
-| Visualization | Volcano Plot | Current | DESeq2 results | Volcano plot | Visualize significance vs. fold change |
-| Visualization | Heatmap2 | Current | Normalized counts | Clustered heatmap | Show expression patterns |
-| Enrichment | goseq | Current | DE gene list | GO enrichment table | Identify enriched pathways |
+| Tool | Function | Input | Output | use |
+|------|----------|-------|--------|----------|
+| **Falco/FastQC** | Quality assessment | FASTQ | HTML report | Detect sequencing problems early |
+| **MultiQC** | Aggregate reports | Multiple reports | Interactive HTML | Compare samples, spot outliers |
+| **Cutadapt** | Trim adapters & low quality | FASTQ | Trimmed FASTQ | Remove non-genomic sequences |
+| **STAR** | Map to genome (splice-aware) | FASTQ + reference | BAM, counts | Ultra-fast, handles introns |
+| **Picard MarkDuplicates** | Flag PCR duplicates | BAM | Flagged BAM | Identify amplification bias |
+| **RSeQC** | QC suite (coverage, strand, dist) | BAM + GTF | Multiple reports | Comprehensive quality evaluation |
+| **featureCounts** | Count reads per gene | BAM + GTF | Count matrix | Fast, accurate quantification |
+| **DESeq2** | Differential expression testing | Count matrix + metadata | DE table, plots | Statistical significance testing |
+| **g:Profiler** | Gene ontology enrichment | Gene list | Enrichment results | Interpret biological function |
 
 ---
 
-## DESeq2 Output Explained
-
-DESeq2 produces three main outputs:
-
-**Output 1 — Normalized counts table:**
-A matrix of all genes (rows) × all samples (columns), where each value is the raw count divided by the sample's size factor. Use this for visualization (heatmaps) and for checking individual gene expression levels.
-
-**Output 2 — Graphical summary:**
-Contains the PCA plot, sample-distance heatmap, MA plot, and dispersion plot — all described in Phase 7 above. Review these before trusting the results table.
-
-**Output 3 — Results summary table:**
-The main output: one row per gene with log2FoldChange, p-value, and padj. Apply these filters to get your final DE gene list:
-- `padj < 0.05` (statistically significant after multiple testing correction)
-- `|log2FoldChange| ≥ 1` (at least 2× change — biologically meaningful)
-
-**Number of replicates matters:**
-This tutorial uses 3–4 biological replicates per condition. DESeq2 and similar tools require **at least 3 biological replicates** per condition to estimate dispersion reliably. With fewer replicates, statistical power drops sharply and the number of false negatives increases significantly.
-
----
 
 ## References
 
@@ -709,4 +687,3 @@ This tutorial uses 3–4 biological replicates per condition. DESeq2 and similar
 
 ---
 
-*README compiled from the Galaxy Training Network tutorial. For the most current version of this tutorial, visit the [official tutorial page](https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/ref-based/tutorial.html).*
