@@ -1,17 +1,14 @@
-# 🧬 Reference-Based RNA-Seq Data Analysis (Galaxy)
+#  Reference-Based RNA-Seq Data Analysis (Galaxy)
 
-> A complete step-by-step guide to detecting differentially expressed genes from raw RNA-seq reads — using the Galaxy web platform, no programming required.
+> A complete step-by-step guide to detecting differentially expressed genes from raw RNA-seq reads — using the Galaxy web platform.
 
 🔗 **Tutorial Link:** https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/ref-based/tutorial.html
 
-**Authors:** Bérénice Batut, Mallory Freeberg, Mo Heydarian, Anika Erxleben, Pavankumar Videm, Clemens Blank, Maria Doyle, Nicola Soranzo, Peter van Heusden, Lucille Delisle
-**Last Updated:** December 2025 | **License:** MIT | **Platform:** Galaxy (usegalaxy.org / Galaxy Europe)
-
 ---
 
-## 📚 Table of Contents
+## Table of Contents
 
-- [What Is Reference-Based RNA-Seq?](#what-is-reference-based-rna-seq)
+- [Introduction](#Introduction)
 - [Biological Background — The Pasilla Experiment](#biological-background--the-pasilla-experiment)
 - [Dataset Overview](#dataset-overview)
 - [Full Pipeline at a Glance](#full-pipeline-at-a-glance)
@@ -26,21 +23,18 @@
   - [Phase 8: Visualization — Heatmap2 & Volcano Plot](#phase-8-visualization--heatmap2--volcano-plot)
   - [Phase 9: Functional Enrichment — goseq](#phase-9-functional-enrichment--goseq)
 - [Tool Summary Table](#tool-summary-table)
-- [DESeq2 Output Explained](#deseq2-output-explained)
+- [DESeq2 Output](#deseq2-output)
 - [References](#references)
 
 ---
 
-## What Is Reference-Based RNA-Seq?
+## Introduction
 
 RNA sequencing (RNA-seq) measures the expression level of every gene in a sample at the same time — a technology that captures a snapshot of the entire transcriptome (the set of all RNA molecules in a cell). One of the most common goals is **Differential Expression (DE) analysis**: comparing gene expression between two conditions (e.g., treated vs. untreated) to find which genes are turned up or down.
 
-In **reference-based RNA-seq**, reads are mapped to a known reference genome rather than assembled from scratch. This is appropriate when a good reference genome exists for your organism (human, mouse, *Drosophila*, etc.).
+- In **reference-based RNA-seq**, reads are mapped to a known reference genome rather than assembled from scratch. This is appropriate when a good reference genome exists for your organism (human, mouse, *Drosophila*, etc.).
 
-**Why is this more complex than DNA sequencing?**
-Because mRNA in eukaryotes has been spliced — introns have been removed. A read that spans a splice junction cannot be mapped continuously to genomic DNA. You need a **splice-aware aligner** like STAR (used in this tutorial) that knows about splice sites and can map reads that cross exon-exon boundaries.
-
-The full pipeline goes from **raw FASTQ reads → quality control → adapter trimming → genome alignment → read counting → statistical DE analysis → visualization → pathway enrichment**.
+- The full pipeline goes from **raw FASTQ reads → quality control → adapter trimming → genome alignment → read counting → statistical DE analysis → visualization → pathway enrichment**.
 
 ---
 
@@ -64,23 +58,34 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
 | GSM461180 | Treated (PS depleted) | Paired-end |
 | GSM461181 | Treated (PS depleted) | Single-end |
 
-> ⚠️ The tutorial includes both paired-end AND single-end samples in the same experiment. This is handled separately in some steps (particularly for STAR alignment parameters) and as a combined factor in DESeq2.
+>  The tutorial includes both paired-end AND single-end samples in the same experiment. This is handled separately in some steps (particularly for STAR alignment parameters) and as a combined factor in DESeq2.
 
 ---
 
 ## Dataset Overview
 
-| Property | Value |
-|----------|-------|
-| Organism | *Drosophila melanogaster* |
-| Reference genome | dm6 (BDGP6.32) |
-| Annotation file | `Drosophila_melanogaster.BDGP6.32.109_UCSC.gtf.gz` |
-| Read type | Paired-end (4 samples) + Single-end (3 samples) |
-| Total samples | 7 (4 untreated, 3 treated) |
-| Biological replicates | ≥ 3 per condition |
-| Data source | Zenodo (doi: 10.5281/zenodo.1185122) |
-
+### Study Design
+ 
+**Original Study:** Brooks et al. 2011  
+**Organism:** *Drosophila melanogaster* (Fruit fly)  
+**Condition:** Pasilla gene depletion via RNAi  
+ 
+### Sample Information
+ 
+| Condition | Samples | Type | Replicates |
+|-----------|---------|------|-----------|
+| **Untreated (Wild-type)** | GSM461176, GSM461177, GSM461178, GSM461182 | 2 Single-end, 2 Paired-end | 4 |
+| **Treated (Pasilla-depleted)** | GSM461179, GSM461180, GSM461181 | 1 Single-end, 2 Paired-end | 3 |
+| **Total** | 7 samples | Mixed sequencing types | 7 biological replicates |
+ 
+### Data Formats
+ 
+- **Input Format:** FASTQ (gzipped)
+- **Output Format:** BAM (binary alignment), counts matrix (tabular), visualizations (HTML)
+- **Reference Genome:** *Drosophila melanogaster* dm6 (Release 6)
+- **Annotation File:** Drosophila_melanogaster.BDGP6.32.109_UCSC.gtf.gz
 ---
+
 
 ## Full Pipeline at a Glance
 
@@ -143,34 +148,20 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
 
 ### Phase 1: Setup — Data Upload & Collection Organization
 
-**Goal:** Get the raw FASTQ files and annotation files into Galaxy and organize them so multi-sample tools can process them efficiently.
-
-#### Step 1.1 — Create a New Galaxy History
-
-Log in at usegalaxy.org (or Galaxy Europe). Click the **+** icon in the History panel and name your history (e.g., "Reference-based RNA-Seq — Pasilla").
-
-#### Step 1.2 — Import FASTQ Files from Zenodo
-
-```
-Data source: https://doi.org/10.5281/zenodo.1185122
-```
-
-Use **Upload Data → Paste/Fetch Data** and paste the Zenodo URLs. Make sure each file is set to format `fastqsanger` (not `fastq` — Galaxy treats these differently for quality score encoding).
-
-#### Step 1.3 — Import the GTF Annotation File
-
-Import `Drosophila_melanogaster.BDGP6.32.109_UCSC.gtf.gz` from Zenodo or Galaxy's Shared Data Library.
-
-**Why do you need a GTF file?**
-The GTF (Gene Transfer Format) file is a text annotation file that tells the aligner and counting tools where every gene, exon, and transcript is located in the reference genome. It is used twice: first by STAR during alignment (to identify splice sites), and again by featureCounts during read counting (to assign reads to genes). It is critical that the GTF file matches the same genome build (dm6) used for alignment — coordinates in different builds are different and mixing them gives wrong results.
-
-#### Step 1.4 — Organize Files into Paired Collections
-
-For the paired-end samples, Galaxy needs the R1 (forward) and R2 (reverse) reads linked together in a **paired collection**. Use **Build List of Dataset Pairs** to match each `_R1.fastq` with its corresponding `_R2.fastq` by sample name.
-
-**Why use collections?**
-Collections allow Galaxy to run a tool on all samples at once in one operation, rather than manually submitting each sample separately. This is essential for a 7-sample experiment and becomes critical for larger studies.
-
+ 
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Format** | FASTQ (gzip) | Standard sequencing output format |
+| **Import Method** | URL paste or upload | Galaxy auto-detects format |
+| **Organization** | Create collections | Batch processing for multiple samples |
+ 
+**Why This Step?**
+- Ensures all raw sequencing data is available in Galaxy
+- Establishes baseline dataset for tracking
+- Creates organized history for reproducibility
+**Expected Output:**
+- FASTQ datasets (one per sample) in Galaxy history
+- File size: typically 100 MB - 1 GB per sample
 ---
 
 ### Phase 2: Quality Control — Falco + MultiQC
@@ -200,81 +191,133 @@ Collections allow Galaxy to run a tool on all samples at once in one operation, 
 
 #### Step 2.2 — Aggregate with MultiQC
 
-| Field | Value |
-|-------|-------|
-| **Tool** | `MultiQC` |
-| **Input** | Collection of all Falco reports |
-| **Output** | Single unified HTML report for all samples side by side |
 
-**Why MultiQC is essential:**
-Reviewing 7 individual Falco reports would be slow and it's easy to miss patterns. MultiQC combines them into one interactive report where you can immediately see if one sample has a quality problem compared to others. It also works with many other tools (STAR, featureCounts, Cutadapt) to aggregate their outputs in later steps.
-
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Input** | Falco/FastQC reports (collection) | Combines all sample QC data |
+| **Report Type** | Interactive HTML | Easy visualization and filtering |
+ 
+**Why This Tool?**
+- **Aggregate Data:** Combines quality reports from all samples into one interactive report
+- **Compare Samples:** Quickly identify outliers or problematic samples
+- **Export Statistics:** Generate publication-quality plots
+**Key Metrics Evaluated:**
+ 
+| Metric | Ideal Value | Acceptable Range | Action if Poor |
+|--------|-------------|------------------|----------------|
+| **Per-base Q-score** | >30 (Q30+) | >28 | Trim low-quality bases |
+| **GC Content** | Stable across reads | ±5% of mean | Indicates contamination if skewed |
+| **Duplicate Rate** | 25-50% | <70% | High = possible PCR bias |
+| **Read Length** | Uniform | ±2 bp variation | Low = adapter contamination |
+ 
+**Output:** MultiQC HTML report with interactive visualizations
+ 
 ---
 
 ### Phase 3: Trimming — Cutadapt
 
-**Goal:** Remove adapter sequences and low-quality bases from the ends of reads before alignment. Adapters are synthetic sequences from the library preparation protocol — if not removed, they interfere with mapping.
-
-| Field | Value |
-|-------|-------|
-| **Tool** | `Cutadapt` |
-| **Input** | Raw FASTQ collection (or paired collection for PE data) |
-| **Key Parameters** | Adapter sequence (Illumina TruSeq: `AGATCGGAAGAGC`); quality cutoff 20; minimum length 20 |
-| **Output** | Trimmed FASTQ collection |
-
-**What Cutadapt does step by step:**
-1. **Adapter trimming:** Scans for the adapter sequence at the 3' end of each read and removes it along with everything downstream. Without this, the aligner would try to map the adapter sequence to the genome, fail, and discard the read.
-2. **Quality trimming:** Removes low-quality bases from the 3' end using a sliding window approach. Poor-quality bases at the end of reads reduce alignment accuracy.
-3. **Length filtering:** Discards reads that become too short after trimming (< 20 bp by default). Very short reads map to multiple places in the genome (multi-mapping) and are unreliable.
-
-**After trimming:**
-Re-run Falco + MultiQC on the trimmed reads to confirm that adapter content is gone and quality has improved.
-
-| Before Cutadapt | After Cutadapt |
-|-----------------|---------------|
-| Adapter sequences visible in Falco | No adapter content |
-| Low-quality bases at read 3' end | Quality remains high to end |
-| All reads same length | Reads have variable lengths (different amounts trimmed) |
-
-> 💡 **Alternative tools:** Trim Galore! or Trimmomatic can be used instead of Cutadapt for the same purpose.
-
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | Cutadapt | Industry standard for adapter trimming |
+| **Adapter Sequence** | Illumina TruSeq | Matches library preparation kit |
+| **Quality Threshold** | PHRED ≥20 | Removes low-quality bases |
+| **Minimum Length** | 20 bp | Discards too-short fragments |
+| **Input Type** | Paired-end reads | Preserve read pairing information |
+ 
+**Why This Step?**
+ 
+1. **Remove Adapters:** Sequencing adapters don't map to genome; they create false alignments
+2. **Quality Trimming:** Low-quality bases at read ends cause mapping errors
+3. **Preserve Pairing:** Maintains forward/reverse read pairs for sensitive alignment
+**Input:**
+- R1 (forward) FASTQ
+- R2 (reverse) FASTQ
+**Output:**
+- Trimmed R1 FASTQ
+- Trimmed R2 FASTQ
+- Single-end reads (if one read discarded during trimming)
+- Trimming report (HTML)
+**Quality Control Check:**
+ 
+| Check | Expected Outcome |
+|-------|-----------------|
+| **Adapter Removal** | <1% adapter sequence remaining |
+| **Length Distribution** | Peak at original length - a few bp |
+| **Base Loss** | 5-15% of bases removed (typical) |
+| **Pair Retention** | >90% of read pairs retained |
+ 
+**Example Report Output:**
+```
+=== Cutadapt Summary ===
+Reads processed: 12,345,678
+Reads with adapters: 2,341,567 (19%)
+Reads trimmed for quality: 3,456,789 (28%)
+Reads discarded: 234,567 (1.9%)
+Final read pairs: 12,110,111 (98%)
+```
+ 
 ---
+ 
 
 ### Phase 4: Mapping — RNA STAR
 
 **Goal:** Align the trimmed reads to the *Drosophila* reference genome (dm6) using a splice-aware aligner, producing BAM files showing exactly where each read maps.
 
-**Why a splice-aware aligner?**
-Most reads in RNA-seq come from processed mRNA — meaning introns have been removed. A read at an exon-exon junction spans a region that does not exist as a continuous sequence in the genome. Standard DNA aligners cannot handle this. STAR uses the GTF annotation to know where splice sites are and maps junction-spanning reads correctly.
-
-| Field | Value |
-|-------|-------|
-| **Tool** | `RNA STAR` (Galaxy version 2.7.11b+galaxy0) |
-| **Input** | Trimmed FASTQ collection · Reference genome: dm6 · GTF annotation file |
-| **Key Parameters** | Junction overhang = read length − 1 (36 for 37bp reads) · Output: Per gene read counts (GeneCounts) · Single-end or Paired-end as appropriate |
-| **Output** | BAM file (aligned reads) · Alignment log · Splice junction file · Gene count table (from STAR directly) |
-
-**Key STAR parameters explained:**
-
-| Parameter | Why It Matters |
-|-----------|----------------|
-| `--sjdbGTFfile` | GTF file for splice junction database; STAR uses this to know valid splice sites |
-| `--sjdbOverhang` | Should be read_length − 1; defines how far a read can extend past a junction |
-| `--outSAMtype BAM SortedByCoordinate` | Produces a coordinate-sorted BAM, required by downstream tools |
-| Per gene read counts (GeneCounts) | Optionally counts reads per gene during mapping; equivalent to HTSeq-count output |
-
-**What to check in the STAR alignment log:**
-- **% Uniquely mapped reads:** Should be >80%. Lower rates suggest poor quality data, wrong reference genome, or significant contamination.
-- **% Multi-mapped reads:** Reads mapping to >1 location. A small % is expected (repetitive elements); very high % is a problem.
-- **% Reads unmapped:** Reads that could not be placed. Investigate if >10%.
-
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | RNA STAR v2.7.11b+ | Ultra-fast splice-aware aligner |
+| **Input Format** | Paired-end collections | Batch map all samples simultaneously |
+| **Reference Genome** | *D. melanogaster* dm6 | Matches annotation file version |
+| **Annotation File** | .GTF (gzip) | Enables junction detection |
+| **Junction Window** | 36 bp | Length_of_reads - 1 |
+| **Output Mode** | Per-gene read counts | Directly generate feature counts |
+| **Threading** | 8+ cores | Galaxy provides HPC resources |
+ 
+**Why STAR?**
+ 
+1. **Handles Splice Junctions:** Most RNA reads span exon-exon boundaries (splice junctions)
+2. **Speed:** Aligns millions of reads in minutes (vs. hours for other tools)
+3. **Accuracy:** Superior sensitivity for novel splicing events
+4. **Gene Quantification:** Outputs read counts per gene directly
+   
+**Input:**
+- Trimmed R1 FASTQ (forward reads)
+- Trimmed R2 FASTQ (reverse reads)
+- Reference genome index (built automatically by Galaxy)
+- Gene annotation GTF file
+**Output:**
+- **Aligned_sortedByCoord.bam:** Binary alignment file (sortable, indexed)
+- **Log.final.out:** Mapping statistics (alignment rate, splice junctions, etc.)
+- **ReadsPerGene.out.tab:** Per-gene raw read counts (unstranded)
+- **SJ.out.tab:** Splice junction information
+**Mapping Statistics Explanation:**
+ 
+| Statistic | Ideal | Acceptable | Problem |
+|-----------|-------|-----------|---------|
+| **Uniquely Mapped** | >80% | >70% | <70% = contamination or wrong reference |
+| **Multimapped Reads** | <10% | <20% | Repetitive sequences or low complexity |
+| **Unmapped Reads** | <15% | <25% | Low quality sequencing |
+| **Spliced Reads** | 40-60% | 30-70% | Organism-dependent, indicates splice detection |
+ 
+**Example Output:**
+```
+STAR Mapping Results:
+Total reads: 12,110,111
+Uniquely mapped: 10,455,687 (86.4%)
+Multimapped: 892,340 (7.4%)
+Unmapped - too short: 634,291 (5.2%)
+Unmapped - other: 127,793 (1.1%)
+Spliced reads: 5,234,123 (43%)
+Splice junctions: 156,234 novel
+```
+ 
 ---
 
 ### Phase 5: Post-Mapping QC — IGV, MarkDuplicates, RSeQC
 
-**Goal:** Verify the quality of the alignment more deeply — checking that reads are going to the right places, that duplicate rates are acceptable, and that the read distribution across genomic features makes sense for RNA-seq data.
+---
 
-#### Step 5.1 — Visual Inspection with IGV (Integrative Genomics Viewer)
+#### Step 5a — Visual Inspection with IGV (Integrative Genomics Viewer)
 
 | Field | Value |
 |-------|-------|
@@ -285,42 +328,140 @@ Most reads in RNA-seq come from processed mRNA — meaning introns have been rem
 **What you're checking:**
 Load the BAM file in IGV and navigate to a known well-expressed gene. You should see reads piling up on the exons — not uniformly across the gene. The view reveals **sashimi plots** (arc plots showing reads that span splice junctions), which confirm that splicing is being captured correctly. If reads pile up on introns or the distributions look wrong, this could indicate a wrong strand setting or annotation mismatch.
 
-#### Step 5.2 — Duplicate Read Marking with MarkDuplicates
-
-| Field | Value |
-|-------|-------|
-| **Tool** | `MarkDuplicates` (Picard suite) |
-| **Input** | Sorted BAM files (collection from STAR) |
-| **Output** | BAM with duplicate reads flagged · Duplicate metrics log |
-
-**What are duplicate reads?**
-Duplicate reads are multiple copies of the same original DNA fragment that were amplified during PCR library preparation and then sequenced multiple times. They are not independent measurements of gene expression.
-
-**Why keep them in RNA-seq (usually)?**
-In RNA-seq, duplicates mostly come from highly expressed genes — a gene expressed at very high levels will naturally produce many identical fragments even without PCR over-amplification. Removing them would unfairly penalize high-expression genes. For this reason, duplicates are typically **marked but not removed** in RNA-seq differential expression analysis. They are only cause for concern if the overall duplication rate is very high (>60–70%), which could indicate over-amplification of a low-complexity library.
-
-#### Step 5.3 — Read Distribution with RSeQC
-
-| Field | Value |
-|-------|-------|
-| **Tool** | `RSeQC Read Distribution` |
-| **Input** | BAM files (collection) · BED12 reference gene model (converted from GTF) |
-| **Output** | Text report showing how reads are distributed across genomic features |
-
-**Expected distribution for successful RNA-seq:**
-
-| Feature | Expected % | Meaning if Different |
-|---------|-----------|---------------------|
-| CDS Exons | ~60–80% | Good: reads are in coding exons |
-| 5' UTR / 3' UTR | ~5–15% | Normal; mRNA includes UTRs |
-| Introns | ~2–10% | Low is good; high may suggest genomic DNA contamination or unspliced pre-mRNA |
-| Intergenic regions | ~2–10% | Very high would suggest non-specific sequencing or wrong annotation |
-
-> 🔑 **Expected result:** >80% of reads mapped to exons confirms the data is genuine RNA-seq and the alignment was successful.
-
-Run **MultiQC** on the Read Distribution outputs to compare all samples side by side.
-
+ #### **Step 5b: MarkDuplicates - Identify PCR Duplicates**
+ 
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | Picard MarkDuplicates | Industry standard for duplicate detection |
+| **Input** | BAM files (from STAR) | Requires aligned reads |
+| **Assumptions** | Reads at same position = duplicates | Conservative approach |
+| **Marking Mode** | Mark (not remove) | Preserves all reads for later filtering |
+ 
+**Why This Step?**
+ 
+In RNA-Seq, duplicate reads can arise from:
+ 
+1. **Legitimate:** Highly expressed genes naturally produce many identical reads
+2. **Artifacts:** PCR amplification during library prep (bad for differential expression)
+The tool marks duplicates so downstream analysis can decide whether to filter them.
+ 
+**Input:** BAM file from STAR  
+**Output:** 
+- BAM file with duplicate flags
+- Duplicate metrics report (tabular)
+**Expected Metrics:**
+ 
+| Sample | Duplicate % | Interpretation |
+|--------|-------------|----------------|
+| **5-20%** | Normal | Low complexity library, normal expression variation |
+| **20-50%** | Acceptable | Common in RNA-Seq, especially if lowly-sequenced |
+| **>50%** | Concern | Possible PCR over-amplification or very biased sample |
+ 
+** Report:**
+```
+Sample: GSM461177_paired
+Total reads: 10,455,687
+Duplicate reads: 2,708,000 (25.9%)
+Duplicate rate indicates: Normal (within expected range)
+```
+ 
 ---
+#### **Step 5c: RSeQC - Quality Control Suite**
+ 
+**i: Gene Body Coverage**
+ 
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | RSeQC Gene Body Coverage | Detects 3' bias in cDNA prep |
+| **Input** | BAM + GTF annotation | Requires gene coordinates |
+| **Bins** | 100 (5% intervals) | Smooth coverage profile |
+ 
+**Why This Tool?**
+- **Detects Bias:** Some library prep methods show preferential 5' or 3' bias
+- **RNA Degradation:** Non-uniform coverage suggests degraded RNA
+- **Quality Indicator:** Uniform coverage = high-quality RNA
+**Expected Output:**
+- Coverage plot showing 5' → 3' distribution
+- Ideally: Relatively flat line (uniform coverage)
+- Problem: Steep 5' or 3' drop-off indicates RNA degradation
+**Interpretation:**
+```
+ Expected: Relatively even coverage 5' to 3' (flat line)
+ Concern: Sharp drop at 3' end → possible RNA degradation
+ Concern: Drop at 5' end → unusual, may indicate technical issue
+```
+ 
+---
+ 
+**ii: Infer Experiment - Strand Detection**
+ 
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | RSeQC Infer Experiment | Determines library strandedness |
+| **Input** | BAM file | Read strand information |
+| **Sample Size** | 200,000 reads | Sufficient for accurate inference |
+ 
+**Why This Step?**
+ 
+Different library prep methods preserve strand information differently:
+ 
+| Strandedness Type | Library Kit | Read Mapping Pattern |
+|------------------|------------|-------------------|
+| **Unstranded (IU)** | Standard mRNA-Seq | Reads from both strands equally |
+| **Forward-stranded (SF)** | dUTP or TrueSeq | Read 1 = reverse strand, Read 2 = forward |
+| **Reverse-stranded (SR)** | Older protocols | Read 1 = forward strand, Read 2 = reverse |
+ 
+**Input:** BAM file  
+**Output:** Strand fraction report
+ 
+**Output:**
+```
+Fraction of reads explained by "1++,1--,2+-,2-+": 4.9%
+Fraction of reads explained by "1+-,1-+,2++,2--": 95.1%
+Fraction of reads explained by other combinations: 0.0%
+ 
+Conclusion: This is a reverse-stranded library (SR type)
+```
+ 
+**Interpretation Decision:**
+ 
+If >90% of reads fit one pattern → **Stranded library** (use in featureCounts/DESeq2)  
+If ~50/50 split → **Unstranded library** (ignore strand in counting)
+ 
+---
+ 
+**iii: Read Distribution**
+ 
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| **Tool** | RSeQC Read Distribution | Categorizes read mapping locations |
+| **Input** | BAM + GTF file | Requires gene boundaries |
+ 
+**Why This Step?**
+ 
+Expected read distribution in clean RNA-Seq data:
+ 
+| Feature | Expected % | Indicates |
+|---------|-----------|----------|
+| **Exons** | 70-90% | Correct target (mRNA) |
+| **Introns** | 5-15% | Immature transcripts (normal small amount) |
+| **Intergenic** | 5-15% | Contamination if high (genomic DNA) |
+| **5' UTR** | 2-5% | Promoter artifacts |
+| **3' UTR** | 5-10% | 3' biased amplification |
+ 
+**Example Output:**
+```
+Exonic reads: 85.2% ✓
+Intronic reads: 8.7% ✓
+Intergenic reads: 6.1% ✓
+```
+ 
+#### **Step 5d: Aggregate with MultiQC**
+ 
+Combines all post-mapping QC results into one interactive report for easy visualization and comparison across samples.
+ 
+---
+
 
 ### Phase 6: Read Counting — featureCounts
 
@@ -333,28 +474,22 @@ Run **MultiQC** on the Read Distribution outputs to compare all samples side by 
 | **Key Parameters** | Feature type: `exon` · Attribute: `gene_id` · Strand specificity: matching your library prep · Paired-end/Single-end appropriate for each sample group |
 | **Output** | Count table per sample (genes as rows, read count as value) |
 
-**What featureCounts does:**
-For each gene in the GTF file, featureCounts counts the number of reads from the BAM file that overlap with the gene's annotated exons. It reports one count per gene — the total reads across all exons.
-
 **Important nuances:**
 
 - **Spliced reads at junctions:** A read spanning two exons is counted once for the gene, not twice. However, the count reflects fragments (in paired-end data), not individual reads.
 - **Strand specificity:** If the library was prepared with a strand-specific protocol (most modern kits are), you must tell featureCounts which strand the reads should come from. Getting this wrong can halve your counts or assign reads to the wrong genes. Use RSeQC's `infer_experiment` to determine strandedness from your data.
 - **GTF version must match:** The GTF must be the same version as the reference genome used for alignment. Different builds have different chromosome coordinates — mixing them gives wrong or zero counts.
 
-**Output count table (example):**
-
-| GeneID | GSM461176 | GSM461177 | GSM461178 | GSM461179 | GSM461180 |
-|--------|-----------|-----------|-----------|-----------|-----------|
-| FBgn0000003 | 0 | 0 | 0 | 0 | 0 |
-| FBgn0000008 | 92 | 79 | 85 | 12 | 8 |
-| FBgn0000014 | 4521 | 4831 | 4320 | 3892 | 4102 |
-
-Run **MultiQC** on featureCounts outputs to check the assignment rates across samples.
-
-> 💡 **Alternative tools:** HTSeq-count produces equivalent results; STAR can also count directly during alignment (identical to HTSeq-count). featureCounts is preferred for speed.
-
----
+ 
+**Output Matrix Format:**
+ 
+```
+Geneid          Length  GSM461176  GSM461177  GSM461179  GSM461180
+FBgn0000003     1000    234        567        123        456
+FBgn0000008     2500    890        1234       567        789
+FBgn0000014     3200    1200       1567       234        567
+...
+```
 
 ### Phase 7: Differential Expression — DESeq2
 
@@ -366,22 +501,14 @@ Run **MultiQC** on featureCounts outputs to check the assignment rates across sa
 | **Input** | 7 count tables (one per sample) · Factor definitions (treatment status, sequencing type) |
 | **Output** | Normalized count table · Summary results table (log2 fold change, p-values) · QC plots (PCA, sample distance heatmap, MA plot) |
 
-#### Why DESeq2 (and not just comparing averages)?
-
-Raw read counts cannot be directly compared between samples because:
-1. Samples are sequenced to different depths — a sample with twice the total reads will have roughly double the counts for every gene, regardless of true expression
-2. Gene expression data is highly variable and overdispersed — the variance of counts is much greater than the mean, violating assumptions of simple statistical tests
-3. With only 3–4 replicates per condition, statistical power is limited and needs to be handled carefully
-
-DESeq2 addresses all of these with a principled statistical framework based on the **negative binomial distribution**.
 
 #### How DESeq2 Works
 
 **Step 1 — Normalization (size factors):**
-DESeq2 calculates a **size factor** for each sample that corrects for sequencing depth. It does this by computing the geometric mean of each gene across all samples, then dividing each sample's counts by this reference. The median of these ratios becomes the size factor. After dividing counts by their sample's size factor, all samples are on a comparable scale.
+- DESeq2 calculates a **size factor** for each sample that corrects for sequencing depth. It does this by computing the geometric mean of each gene across all samples, then dividing each sample's counts by this reference. The median of these ratios becomes the size factor. After dividing counts by their sample's size factor, all samples are on a comparable scale.
 
 **Step 2 — Dispersion estimation:**
-For each gene, DESeq2 estimates how variable its counts are across replicates. Genes with very low counts tend to be noisy, and DESeq2 "shrinks" their dispersion estimates toward a global trend to borrow statistical strength across all genes — this is especially important with few replicates.
+- For each gene, DESeq2 estimates how variable its counts are across replicates. Genes with very low counts tend to be noisy, and DESeq2 "shrinks" their dispersion estimates toward a global trend to borrow statistical strength across all genes — this is especially important with few replicates.
 
 **Step 3 — Design matrix (accounting for multiple factors):**
 In this experiment there are two factors:
