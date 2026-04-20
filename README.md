@@ -142,11 +142,11 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
 
 ---
 
-## Step-by-Step Workflow
+# Step-by-Step Workflow
 
 ---
 
-### Phase 1: Setup — Data Upload & Collection Organization
+## Phase 1: Setup — Data Upload & Collection Organization
 
  
 | Parameter | Value | Reason |
@@ -164,11 +164,11 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
 - File size: typically 100 MB - 1 GB per sample
 ---
 
-### Phase 2: Quality Control — Falco + MultiQC
+## Phase 2: Quality Control — Falco + MultiQC
 
 **Goal:** Assess the quality of the raw reads to detect problems before any processing. Problems at this stage — if missed — corrupt all downstream results.
 
-#### Step 2.1 — Run Falco on All Samples
+### Step 2.1 — Run Falco on All Samples
 
 | Field | Value |
 |-------|-------|
@@ -189,7 +189,7 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
 | Adapter content | % reads containing adapter sequences | Any adapter > 5% means trimming is needed |
 | Overrepresented sequences | Sequences appearing far more than expected | Could be adapters, rRNA, or contamination |
 
-#### Step 2.2 — Aggregate with MultiQC
+### Step 2.2 — Aggregate with MultiQC
 
 
 | Parameter | Value | Reason |
@@ -214,7 +214,7 @@ This tutorial is based on the study by **Brooks et al. (2011)**, which investiga
  
 ---
 
-### Phase 3: Trimming — Cutadapt
+## Phase 3: Trimming — Cutadapt
 
 | Parameter | Value | Reason |
 |-----------|-------|--------|
@@ -259,7 +259,7 @@ Final read pairs: 12,110,111 (98%)
 ---
  
 
-### Phase 4: Mapping — RNA STAR
+## Phase 4: Mapping — RNA STAR
 
 **Goal:** Align the trimmed reads to the *Drosophila* reference genome (dm6) using a splice-aware aligner, producing BAM files showing exactly where each read maps.
 
@@ -313,11 +313,11 @@ Splice junctions: 156,234 novel
  
 ---
 
-### Phase 5: Post-Mapping QC — IGV, MarkDuplicates, RSeQC
+## Phase 5: Post-Mapping QC — IGV, MarkDuplicates, RSeQC
 
 ---
 
-#### Step 5a — Visual Inspection with IGV (Integrative Genomics Viewer)
+### Step 5a — Visual Inspection with IGV (Integrative Genomics Viewer)
 
 | Field | Value |
 |-------|-------|
@@ -328,7 +328,7 @@ Splice junctions: 156,234 novel
 **What you're checking:**
 Load the BAM file in IGV and navigate to a known well-expressed gene. You should see reads piling up on the exons — not uniformly across the gene. The view reveals **sashimi plots** (arc plots showing reads that span splice junctions), which confirm that splicing is being captured correctly. If reads pile up on introns or the distributions look wrong, this could indicate a wrong strand setting or annotation mismatch.
 
- #### **Step 5b: MarkDuplicates - Identify PCR Duplicates**
+ ### **Step 5b: MarkDuplicates - Identify PCR Duplicates**
  
 | Parameter | Value | Reason |
 |-----------|-------|--------|
@@ -366,7 +366,7 @@ Duplicate rate indicates: Normal (within expected range)
 ```
  
 ---
-#### **Step 5c: RSeQC - Quality Control Suite**
+### **Step 5c: RSeQC - Quality Control Suite**
  
 **i: Gene Body Coverage**
  
@@ -456,7 +456,7 @@ Intronic reads: 8.7% ✓
 Intergenic reads: 6.1% ✓
 ```
  
-#### **Step 5d: Aggregate with MultiQC**
+### **Step 5d: Aggregate with MultiQC**
  
 Combines all post-mapping QC results into one interactive report for easy visualization and comparison across samples.
  
@@ -464,7 +464,7 @@ Combines all post-mapping QC results into one interactive report for easy visual
 
 <img width="800" height="500" alt="mapping result igv" src="https://github.com/user-attachments/assets/89d1740c-2aec-41f9-ae8e-1d60e8d009ed" />
 
-### Phase 6: Read Counting — featureCounts
+## Phase 6: Read Counting — featureCounts
 
 **Goal:** Produce a count matrix — a table showing how many reads mapped to each gene in each sample. This is the direct numerical input to differential expression analysis.
 
@@ -492,7 +492,7 @@ FBgn0000014     3200    1200       1567       234        567
 ...
 ```
 
-### Phase 7: Differential Expression — DESeq2
+## Phase 7: Differential Expression — DESeq2
 
 
 | Parameter | Value | Reason |
@@ -589,11 +589,11 @@ Total DE genes: 2,221 (16.3%)
 
 
 ---
-### Phase 8: Visualization — Heatmap2 & Volcano Plot
+## Phase 8: Visualization — Heatmap2 & Volcano Plot
 
 **Goal:** Produce publication-quality visualizations of the differentially expressed genes to understand patterns and communicate results.
 
-#### Step 8.1 — Volcano Plot
+### Step 8.1 — Volcano Plot
 
 | Field | Value |
 |-------|-------|
@@ -613,7 +613,7 @@ Total DE genes: 2,221 (16.3%)
 
 ---
 
-#### Step 8.2 — Heatmap2
+### Step 8.2 — Heatmap2
 
 | Field | Value |
 |-------|-------|
@@ -632,7 +632,7 @@ Rows are genes, columns are samples. Color intensity shows normalized expression
 
 
 ---
-### Phase 9: Functional Enrichment — goseq
+## Phase 9: Functional Enrichment — goseq
 
 **Goal:** Go beyond individual genes and ask: are there biological pathways, processes, or functions that are systematically enriched among the DE genes? This converts a gene list into biological insight.
 
@@ -658,7 +658,7 @@ Each row is a GO term. A small adjusted p-value means the genes annotated with t
 
 ---
 
-## Tool Summary 
+## Summary 
 
 | Tool | Function | Input | Output | use |
 |------|----------|-------|--------|----------|
